@@ -1,3 +1,8 @@
+PoC of an alternative way to handle async streams
+
+# Example
+
+```typescript
 import {
     AsyncGeneratorStream,
     AsyncGeneratorStreamCollectors,
@@ -35,3 +40,20 @@ async function main() {
 }
 
 main();
+
+` Returns: 
+[
+  'Do something nice for someone I care about',
+  'Memorize the fifty states and their capitals',
+  'Watch a classic movie',
+  'Contribute code or a monetary donation to an open-source software project',
+  "Solve a Rubik's cube",
+  'Bake pastries for me and neighbor',
+  'Go see a Broadway production',
+  'Write a thank you letter to an influential person in my life',
+  'Invite some friends over for a game night',
+  'Have a football scrimmage with some friends'
+]
+
+`;
+```

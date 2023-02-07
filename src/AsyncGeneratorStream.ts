@@ -1,6 +1,6 @@
 export class AsyncGeneratorStream<T = any> {
     private _stream: T[];
-    private _currentGenerator?: AsyncGenerator;
+    private _generator: AsyncGenerator;
 
     constructor(stream: T[]) {
         this._stream = stream;
@@ -10,21 +10,26 @@ export class AsyncGeneratorStream<T = any> {
         return new AsyncGeneratorStream<T>(arr);
     }
 
-    map(func: (elm: T) => any): AsyncGeneratorStream {
-        const generator = this._map(func);
-        this._currentGenerator = generator;
+    pipeMap(...funcs: ((elm: any) => any)[]): AsyncGeneratorStream<any> {
+        const generator = this._pipe(funcs);
+        this._generator = generator;
         return this;
     }
 
-    async *_map(func: (elm: T) => any) {
-        for (const e of this._stream) {
-            yield await func(e);
+    async *_pipe(funcs: any): AsyncGenerator {
+        for (let i = 0; i < this._stream.length; i++) {
+            for (let func of funcs) {
+                this._stream[i] = await func(this._stream[i]);
+            }
+            yield await this._stream[i];
         }
     }
 
-    collect(collector: IAsyncGeneratorStreamCollector<any>): Promise<any> {
-        if (this._currentGenerator) {
-            return collector.collect(this._currentGenerator);
+    async collect(
+        collector: IAsyncGeneratorStreamCollector<any>
+    ): Promise<any> {
+        if (this._generator) {
+            return collector.collect(this._generator);
         }
 
         return collector.collect(this);
@@ -73,6 +78,10 @@ export class ArrayAsyncGeneratorStreamCollector
     }
 
     private _isGenerator(elm: any): boolean {
+        if (Array.isArray(elm) && (elm as any[]).length > 0) {
+            return typeof elm[0].next === "function";
+        }
+
         return typeof elm.next === "function";
     }
 
