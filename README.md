@@ -15,7 +15,7 @@ class Data {
         this._index = idx;
     }
 
-    async readText(): Promise<any> {
+    async fetchTodo(): Promise<any> {
         return fetch("https://dummyjson.com/todos/" + this._index);
     }
 }
@@ -30,9 +30,9 @@ async function main() {
 
     const res = await AsyncGeneratorStream.stream(data)
         .pipeMap(
-            (e) => e.readText(),
-            (e) => e.json(),
-            (e) => e.todo
+            (d) => d.fetchTodo(),
+            (res) => res.json(),
+            (todoObj) => todoObj.todo
         )
         .collect(AsyncGeneratorStreamCollectors.toArray());
 
@@ -41,19 +41,18 @@ async function main() {
 
 main();
 
-` Returns: 
-[
-  'Do something nice for someone I care about',
-  'Memorize the fifty states and their capitals',
-  'Watch a classic movie',
-  'Contribute code or a monetary donation to an open-source software project',
-  "Solve a Rubik's cube",
-  'Bake pastries for me and neighbor',
-  'Go see a Broadway production',
-  'Write a thank you letter to an influential person in my life',
-  'Invite some friends over for a game night',
-  'Have a football scrimmage with some friends'
-]
-
+` prints: 
+    [
+    'Do something nice for someone I care about',
+    'Memorize the fifty states and their capitals',
+    'Watch a classic movie',
+    'Contribute code or a monetary donation to an open-source software project',
+    "Solve a Rubik's cube",
+    'Bake pastries for me and neighbor',
+    'Go see a Broadway production',
+    'Write a thank you letter to an influential person in my life',
+    'Invite some friends over for a game night',
+    'Have a football scrimmage with some friends'
+    ]
 `;
 ```

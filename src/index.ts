@@ -10,7 +10,7 @@ class Data {
         this._index = idx;
     }
 
-    async readText(): Promise<any> {
+    async fetchTodo(): Promise<any> {
         return fetch("https://dummyjson.com/todos/" + this._index);
     }
 }
@@ -25,9 +25,9 @@ async function main() {
 
     const res = await AsyncGeneratorStream.stream(data)
         .pipeMap(
-            (e) => e.readText(),
-            (e) => e.json(),
-            (e) => e.todo
+            (d) => d.fetchTodo(),
+            (res) => res.json(),
+            (todoObj) => todoObj.todo
         )
         .collect(AsyncGeneratorStreamCollectors.toArray());
 
