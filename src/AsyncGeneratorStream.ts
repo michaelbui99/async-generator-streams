@@ -103,8 +103,8 @@ export class ArrayAsyncGeneratorCollector
         let iterator = await generator.next();
         while (!iterator.done) {
             let val = iterator.value as T;
-            for (let t of transformations) {
-                val = await t(val);
+            for (let transformation of transformations) {
+                val = await transformation(val);
             }
 
             if (val != null && val != undefined) {
@@ -122,8 +122,77 @@ export class ArrayAsyncGeneratorCollector
     }
 }
 
+export class ReduceAsyncGeneratorCollector<T = any | null>
+    implements IAsyncGeneratorCollector<T | null>
+{
+    private _reducer: (elm: any) => any;
+
+    constructor(
+        reducer: (accumulator: any, currentValue: any, index: number) => any,
+        initialValue: any = undefined
+    ) {
+        let currentValue = null;
+        let accumulator = initialValue ?? undefined;
+        let index = 0;
+
+        const func = (elm: any) => {
+            if (accumulator === undefined) {
+                accumulator = elm;
+                return accumulator;
+            }
+
+            currentValue = elm;
+            accumulator = reducer(accumulator, currentValue, index);
+            return accumulator;
+        };
+
+        this._reducer = func;
+    }
+
+    async collect(
+        generator: AsyncGenerator<unknown, any, unknown>,
+        transformations: ((elm: any) => any)[]
+    ): Promise<T | null> {
+        let accumulator = null;
+
+        let iterator = await generator.next();
+        while (!iterator.done) {
+            let val = iterator.value as T | undefined;
+
+            for (let transformation of transformations) {
+                try {
+                    val = await transformation(val);
+                } catch {
+                    val = undefined;
+                }
+            }
+
+            if (val != null && val != undefined) {
+                if (Array.isArray(val)) {
+                    for (let elm of val) {
+                        accumulator = this._reducer(elm);
+                    }
+                } else {
+                    accumulator = this._reducer(val);
+                }
+            }
+
+            iterator = await generator.next();
+        }
+
+        return accumulator;
+    }
+}
+
 export class AsyncGeneratorCollectors {
     static toArray(): ArrayAsyncGeneratorCollector {
         return new ArrayAsyncGeneratorCollector();
+    }
+
+    static withReducer(
+        reducer: (accumulator: any, currentValue: any, index: number) => any,
+        initialValue: any = undefined
+    ): ReduceAsyncGeneratorCollector {
+        return new ReduceAsyncGeneratorCollector(reducer, initialValue);
     }
 }
