@@ -30,14 +30,26 @@ async function main() {
         .map((d) => d.fetchTodo())
         .map((res) => res.json())
         .map((todo) => todo.todo)
-        // .filter<string>((text) => text.toLowerCase().includes("open-source"))
-        .reduce((acc, currVal, _) => {
-            return acc + currVal;
-        }, undefined)
+        .filter<string>((text) => text.toLowerCase().includes("open-source"))
         .collect(AsyncGeneratorCollectors.toArray())
         .catch((e) => console.error("Something went wrong", e));
 
     console.log(res); //prints ['Contribute code or a monetary donation to an open-source software project']
+
+    const resReduce = await AsyncGeneratorStream.stream(data)
+        .map((d) => d.fetchTodo())
+        .map((res) => res.json())
+        .map((todo) => todo.todo)
+        .filter<string>((text) => text.toLowerCase().includes("open-source"))
+        .map((s) => s.split(" "))
+        .collect(
+            AsyncGeneratorCollectors.withReducer(
+                (accumulator, currentvalue, _) => accumulator + currentvalue
+            )
+        )
+        .catch((e) => console.error("Something went wrong", e));
+
+    console.log(resReduce); //prints 'Contributecodeoramonetarydonationtoanopen-sourcesoftwareproject'
 }
 
 main();
