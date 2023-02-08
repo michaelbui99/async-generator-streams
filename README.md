@@ -1,11 +1,11 @@
-PoC of an alternative way to handle async streams
+PoC of an alternative way to handle async streams using AsyncGenerators
 
 # Example
 
 ```typescript
 import {
     AsyncGeneratorStream,
-    AsyncGeneratorStreamCollectors,
+    AsyncGeneratorCollectors,
 } from "./AsyncGeneratorStream";
 
 class Data {
@@ -29,30 +29,14 @@ async function main() {
     }
 
     const res = await AsyncGeneratorStream.stream(data)
-        .pipeMap(
-            (d) => d.fetchTodo(),
-            (res) => res.json(),
-            (todoObj) => todoObj.todo
-        )
-        .collect(AsyncGeneratorStreamCollectors.toArray());
+        .map((d) => d.fetchTodo())
+        .map((res) => res.json())
+        .map((todo) => todo.todo)
+        .filter<string>((text) => text.toLowerCase().includes("open-source"))
+        .collect(AsyncGeneratorCollectors.toArray());
 
-    console.log(res);
+    console.log(res); //prints ['Contribute code or a monetary donation to an open-source software project']
 }
 
 main();
-
-` prints: 
-    [
-    'Do something nice for someone I care about',
-    'Memorize the fifty states and their capitals',
-    'Watch a classic movie',
-    'Contribute code or a monetary donation to an open-source software project',
-    "Solve a Rubik's cube",
-    'Bake pastries for me and neighbor',
-    'Go see a Broadway production',
-    'Write a thank you letter to an influential person in my life',
-    'Invite some friends over for a game night',
-    'Have a football scrimmage with some friends'
-    ]
-`;
 ```

@@ -1,76 +1,112 @@
 export class AsyncGeneratorStream<T = any> {
     private _stream: T[];
     private _generator: AsyncGenerator;
+    private _transformations: ((elm: any) => any)[] = [];
 
-    constructor(stream: T[]) {
+    constructor(
+        stream: T[],
+        generator: AsyncGenerator | undefined | null = undefined
+    ) {
         this._stream = stream;
+        if (generator) {
+            this._generator = generator;
+        }
     }
 
-    static stream<T = any>(arr: T[]) {
-        return new AsyncGeneratorStream<T>(arr);
+    static stream<T = any>(bind: T[] | AsyncGenerator) {
+        if (Array.isArray(bind)) {
+            return new AsyncGeneratorStream<T>(bind);
+        }
+
+        if (typeof bind.next === "function") {
+            return new AsyncGeneratorStream<T>([], bind);
+        }
+
+        throw new Error("Failed to stream");
     }
 
-    pipeMap(...funcs: ((elm: any) => any)[]): AsyncGeneratorStream<any> {
-        const generator = this._pipe(funcs);
-        this._generator = generator;
+    _createAndSetGenerator() {
+        this._generator = this._createGeneratorFromStream();
+    }
+
+    async *_createGeneratorFromStream() {
+        for (let elm of this._stream) {
+            yield elm;
+        }
+    }
+
+    map(func: (elm: T) => any): AsyncGeneratorStream<any> {
+        this._transformations.push(func);
+        if (!this._generator) {
+            this._createAndSetGenerator();
+        }
+
         return this;
     }
 
-    async *_pipe(funcs: any): AsyncGenerator {
-        for (let i = 0; i < this._stream.length; i++) {
-            for (let func of funcs) {
-                this._stream[i] = await func(this._stream[i]);
+    filter<T = any>(predicate: (elm: T) => any): AsyncGeneratorStream<any> {
+        const filterFunc = (elm: T) => {
+            if (predicate(elm)) {
+                return elm;
             }
-            yield await this._stream[i];
-        }
+
+            return null;
+        };
+
+        this._transformations.push(filterFunc);
+        return this;
     }
 
-    async collect(
-        collector: IAsyncGeneratorStreamCollector<any>
-    ): Promise<any> {
-        if (this._generator) {
-            return collector.collect(this._generator);
+    async collect(collector: IAsyncGeneratorCollector<any>): Promise<any> {
+        if (!this._generator) {
+            this._createAndSetGenerator();
         }
 
-        return collector.collect(this);
-    }
-
-    async *_getValue() {
-        yield this._stream;
+        return collector.collect(this._generator, this._transformations);
     }
 }
 
-export interface IAsyncGeneratorStreamCollector<TCollection> {
-    collect<TElement>(
-        stream: AsyncGeneratorStream<TElement> | AsyncGenerator
+export interface IAsyncGeneratorCollector<TCollection> {
+    collect(
+        stream: AsyncGenerator,
+        transformations: ((elm: any) => any)[]
     ): Promise<TCollection>;
 }
 
-export class ArrayAsyncGeneratorStreamCollector
-    implements IAsyncGeneratorStreamCollector<any[]>
+export class ArrayAsyncGeneratorCollector
+    implements IAsyncGeneratorCollector<any[]>
 {
     async collect<TElement>(
-        stream:
-            | AsyncGenerator<unknown, any, unknown>
-            | AsyncGeneratorStream<TElement>
+        generator: AsyncGenerator,
+        transformations: ((elm: any) => any)[] = []
     ): Promise<TElement[]> {
-        if (stream instanceof AsyncGeneratorStream) {
-            return await this._collectAsyncGeneratorStream(stream);
+        if (!this._isGenerator(generator)) {
+            throw new Error("Cannot collect non-AsyncGenerator");
         }
 
-        if (this._isGenerator(stream)) {
-            return this._collectAsyncGenerator<TElement>(stream);
-        }
-
-        throw new Error("Failed to collect");
+        return this._collectAsyncGenerator<TElement>(
+            generator,
+            transformations
+        );
     }
 
-    private async _collectAsyncGenerator<T>(generator: AsyncGenerator) {
+    private async _collectAsyncGenerator<T>(
+        generator: AsyncGenerator,
+        transformations: ((elm: any) => any)[]
+    ) {
         const res = [];
 
         let iterator = await generator.next();
         while (!iterator.done) {
-            res.push(iterator.value as T);
+            let val = iterator.value as T;
+            for (let t of transformations) {
+                val = await t(val);
+            }
+
+            if (val != null && val != undefined) {
+                res.push(val);
+            }
+
             iterator = await generator.next();
         }
 
@@ -78,22 +114,12 @@ export class ArrayAsyncGeneratorStreamCollector
     }
 
     private _isGenerator(elm: any): boolean {
-        if (Array.isArray(elm) && (elm as any[]).length > 0) {
-            return typeof elm[0].next === "function";
-        }
-
         return typeof elm.next === "function";
-    }
-
-    private async _collectAsyncGeneratorStream<T>(
-        stream: AsyncGeneratorStream
-    ) {
-        return (await stream._getValue().next()).value as T;
     }
 }
 
-export class AsyncGeneratorStreamCollectors {
-    static toArray(): ArrayAsyncGeneratorStreamCollector {
-        return new ArrayAsyncGeneratorStreamCollector();
+export class AsyncGeneratorCollectors {
+    static toArray(): ArrayAsyncGeneratorCollector {
+        return new ArrayAsyncGeneratorCollector();
     }
 }
