@@ -25,16 +25,6 @@ export class AsyncGeneratorStream<T = any> {
         throw new Error("Failed to stream");
     }
 
-    _createAndSetGenerator() {
-        this._generator = this._createGeneratorFromStream();
-    }
-
-    async *_createGeneratorFromStream() {
-        for (let elm of this._stream) {
-            yield elm;
-        }
-    }
-
     map(func: (elm: T) => any): AsyncGeneratorStream<any> {
         this._transformations.push(func);
         if (!this._generator) {
@@ -67,6 +57,16 @@ export class AsyncGeneratorStream<T = any> {
         }
 
         return collector.collect(this._generator, this._transformations);
+    }
+
+    private _createAndSetGenerator() {
+        this._generator = this._createGeneratorFromStream();
+    }
+
+    private async *_createGeneratorFromStream() {
+        for (let elm of this._stream) {
+            yield elm;
+        }
     }
 }
 
