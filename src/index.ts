@@ -10,6 +10,9 @@ class Data {
         this._index = idx;
     }
 
+    get index() {
+        return this._index;
+    }
     async fetchTodo(): Promise<any> {
         return fetch("https://dummyjson.com/todos/" + this._index);
     }

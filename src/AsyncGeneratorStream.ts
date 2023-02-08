@@ -53,6 +53,10 @@ export class AsyncGeneratorStream<T = any> {
             return null;
         };
 
+        if (!this._generator) {
+            this._createAndSetGenerator();
+        }
+
         this._transformations.push(filterFunc);
         return this;
     }
