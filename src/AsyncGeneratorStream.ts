@@ -72,7 +72,7 @@ export class AsyncGeneratorStream<T = any> {
 
 export interface IAsyncGeneratorCollector<TCollection> {
     collect(
-        stream: AsyncGenerator,
+        generator: AsyncGenerator,
         transformations: ((elm: any) => any)[]
     ): Promise<TCollection>;
 }
