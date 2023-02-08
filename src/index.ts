@@ -24,11 +24,9 @@ async function main() {
     }
 
     const res = await AsyncGeneratorStream.stream(data)
-        .pipeMap(
-            (d) => d.fetchTodo(),
-            (res) => res.json(),
-            (todoObj) => todoObj.todo
-        )
+        .map((d) => d.fetchTodo())
+        .map((res) => res.json())
+        .map((todo) => todo.todo)
         .collect(AsyncGeneratorStreamCollectors.toArray());
 
     console.log(res);
