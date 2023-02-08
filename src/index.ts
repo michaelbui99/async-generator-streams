@@ -1,6 +1,6 @@
 import {
     AsyncGeneratorStream,
-    AsyncGeneratorStreamCollectors,
+    AsyncGeneratorCollectors,
 } from "./AsyncGeneratorStream";
 
 class Data {
@@ -27,9 +27,10 @@ async function main() {
         .map((d) => d.fetchTodo())
         .map((res) => res.json())
         .map((todo) => todo.todo)
-        .collect(AsyncGeneratorStreamCollectors.toArray());
+        .filter<string>((text) => text.toLowerCase().includes("open-source"))
+        .collect(AsyncGeneratorCollectors.toArray());
 
-    console.log(res);
+    console.log(res); //prints ['Contribute code or a monetary donation to an open-source software project']
 }
 
 main();
