@@ -30,7 +30,10 @@ async function main() {
         .map((d) => d.fetchTodo())
         .map((res) => res.json())
         .map((todo) => todo.todo)
-        .filter<string>((text) => text.toLowerCase().includes("open-source"))
+        // .filter<string>((text) => text.toLowerCase().includes("open-source"))
+        .reduce((acc, currVal, _) => {
+            return acc + currVal;
+        }, undefined)
         .collect(AsyncGeneratorCollectors.toArray())
         .catch((e) => console.error("Something went wrong", e));
 

@@ -51,6 +51,30 @@ export class AsyncGeneratorStream<T = any> {
         return this;
     }
 
+    reduce(
+        reducer: (accumulator: any, currentValue: any, index: number) => any,
+        initialValue: any = undefined
+    ) {
+        let currentValue = null;
+        let accumulator = initialValue ?? undefined;
+        let index = 0;
+
+        const func = (elm: any) => {
+            if (accumulator === undefined) {
+                accumulator = elm;
+                return accumulator;
+            }
+
+            currentValue = elm;
+            accumulator = reducer(accumulator, currentValue, index);
+            return accumulator;
+        };
+
+        this._transformations.push(func);
+
+        return this;
+    }
+
     async collect(collector: IAsyncGeneratorCollector<any>): Promise<any> {
         if (!this._generator) {
             this._createAndSetGenerator();
