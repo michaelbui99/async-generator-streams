@@ -28,7 +28,8 @@ async function main() {
         .map((res) => res.json())
         .map((todo) => todo.todo)
         .filter<string>((text) => text.toLowerCase().includes("open-source"))
-        .collect(AsyncGeneratorCollectors.toArray());
+        .collect(AsyncGeneratorCollectors.toArray())
+        .catch((e) => console.error("Something went wrong", e));
 
     console.log(res); //prints ['Contribute code or a monetary donation to an open-source software project']
 }
