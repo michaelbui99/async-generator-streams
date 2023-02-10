@@ -1,7 +1,7 @@
 export class AsyncGeneratorStream<T = any> {
     private _stream: T[];
     private _generator: AsyncGenerator;
-    private _transformations: ((elm: any) => any)[] = [];
+    private _transformations: ((elm: any, index: number) => any)[] = [];
 
     constructor(
         stream: T[],
@@ -25,8 +25,12 @@ export class AsyncGeneratorStream<T = any> {
         throw new Error("Failed to stream");
     }
 
-    map(func: (elm: T) => any): AsyncGeneratorStream<any> {
-        this._transformations.push(func);
+    map(
+        func: (elm: T, index: number, array: any[]) => any
+    ): AsyncGeneratorStream<any> {
+        const array = this._stream ? this._stream : [];
+        this._transformations.push((e: T, idx: number) => func(e, idx, array));
+
         if (!this._generator) {
             this._createAndSetGenerator();
         }
@@ -34,9 +38,13 @@ export class AsyncGeneratorStream<T = any> {
         return this;
     }
 
-    filter<T = any>(predicate: (elm: T) => any): AsyncGeneratorStream<any> {
-        const filterFunc = (elm: T) => {
-            if (predicate(elm)) {
+    filter<T = any>(
+        predicate: (elm: T, index: number, array: any[]) => any
+    ): AsyncGeneratorStream<any> {
+        const array = this._stream ? this._stream : [];
+
+        const filterFunc = (elm: T, idx: number) => {
+            if (predicate(elm, idx, array)) {
                 return elm;
             }
 
@@ -73,7 +81,7 @@ export class AsyncGeneratorStream<T = any> {
 export interface IAsyncGeneratorCollector<TCollection> {
     collect(
         generator: AsyncGenerator,
-        transformations: ((elm: any) => any)[]
+        transformations: ((elm: any, index: number) => any)[]
     ): Promise<TCollection>;
 }
 
@@ -82,7 +90,7 @@ export class ArrayAsyncGeneratorCollector
 {
     async collect<TElement>(
         generator: AsyncGenerator,
-        transformations: ((elm: any) => any)[] = []
+        transformations: ((elm: any, index: number) => any)[] = []
     ): Promise<TElement[]> {
         if (!this._isGenerator(generator)) {
             throw new Error("Cannot collect non-AsyncGenerator");
@@ -96,15 +104,16 @@ export class ArrayAsyncGeneratorCollector
 
     private async _collectAsyncGenerator<T>(
         generator: AsyncGenerator,
-        transformations: ((elm: any) => any)[]
+        transformations: ((elm: any, index: number) => any)[]
     ) {
         const res = [];
 
+        let index = 0;
         let iterator = await generator.next();
         while (!iterator.done) {
             let val = iterator.value as T;
             for (let transformation of transformations) {
-                val = await transformation(val);
+                val = await transformation(val, index);
             }
 
             if (val != null && val != undefined) {
@@ -112,6 +121,7 @@ export class ArrayAsyncGeneratorCollector
             }
 
             iterator = await generator.next();
+            index++;
         }
 
         return res;
@@ -151,17 +161,18 @@ export class ReduceAsyncGeneratorCollector<T = any | null>
 
     async collect(
         generator: AsyncGenerator<unknown, any, unknown>,
-        transformations: ((elm: any) => any)[]
+        transformations: ((elm: any, index: number) => any)[]
     ): Promise<T | null> {
         let accumulator = null;
 
+        let index = 0;
         let iterator = await generator.next();
         while (!iterator.done) {
             let val = iterator.value as T | undefined;
 
             for (let transformation of transformations) {
                 try {
-                    val = await transformation(val);
+                    val = await transformation(val, index);
                 } catch {
                     val = undefined;
                 }
@@ -178,6 +189,7 @@ export class ReduceAsyncGeneratorCollector<T = any | null>
             }
 
             iterator = await generator.next();
+            index++;
         }
 
         return accumulator;
